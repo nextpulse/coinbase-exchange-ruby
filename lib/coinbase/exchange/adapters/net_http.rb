@@ -6,13 +6,18 @@ module Coinbase
         super(api_key, api_secret, api_pass, options)
         @conn = Net::HTTP.new(@api_uri.host, @api_uri.port)
         @conn.use_ssl = true if @api_uri.scheme == 'https'
-        @conn.cert_store = self.class.whitelisted_certificates
+        
+        # Removed custom cert 
+        # https://github.com/strixleviathan/coinbase-exchange-ruby/pull/2/commits
+        # @conn.cert_store = self.class.whitelisted_certificates
+        
         @conn.ssl_version = :TLSv1
       end
 
       private
 
       def http_verb(method, path, body = nil)
+        
         case method
         when 'GET' then req = Net::HTTP::Get.new(path)
         when 'POST' then req = Net::HTTP::Post.new(path)
@@ -33,6 +38,7 @@ module Coinbase
         req['CB-ACCESS-SIGN'] = signature
 
         resp = @conn.request(req)
+
         case resp.code
         when "200" then yield(NetHTTPResponse.new(resp))
         when "400" then fail BadRequestError, resp.body
