@@ -124,6 +124,16 @@ module Coinbase
         out
       end
 
+      # This new method is to allow the caller more pagination control
+      def account_history_paginate(id, params = {})
+        out = nil
+        get("/accounts/#{id}/ledger", params) do |resp|
+          out = response_collection(resp)
+          yield(out, resp) if block_given?
+        end
+        out
+      end
+      
       def account_history(id, params = {})
         out = nil
         get("/accounts/#{id}/ledger", params, paginate: true) do |resp|
