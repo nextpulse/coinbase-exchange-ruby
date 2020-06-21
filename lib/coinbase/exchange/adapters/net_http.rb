@@ -1,3 +1,6 @@
+require 'base64'
+require 'openssl'
+
 module Coinbase
   module Exchange
     # Net-HTTP adapter
@@ -6,10 +9,12 @@ module Coinbase
         super(api_key, api_secret, api_pass, options)
         @conn = Net::HTTP.new(@api_uri.host, @api_uri.port)
         @conn.use_ssl = true if @api_uri.scheme == 'https'
+        
         # Removed custom cert 
         # https://github.com/strixleviathan/coinbase-exchange-ruby/pull/2/commits
         # @conn.cert_store = self.class.whitelisted_certificates
-        @conn.ssl_version = :TLSv1
+        # https://github.com/coinbase/coinbase-ruby/blob/master/lib/coinbase/wallet/adapters/net_http.rb
+        @conn.ssl_version = :TLSv1_2
       end
 
       private
@@ -25,9 +30,12 @@ module Coinbase
         req.body = body
 
         req_ts = Time.now.utc.to_i.to_s
+        
         signature = Base64.encode64(
           OpenSSL::HMAC.digest('sha256', Base64.decode64(@api_secret).strip,
-                               "#{req_ts}#{method}#{path}#{body}")).strip
+                               "#{req_ts}#{method}#{path}#{body}")).strip                               
+                               
+                               
         req['Content-Type'] = 'application/json'
         req['CB-ACCESS-TIMESTAMP'] = req_ts
         req['CB-ACCESS-PASSPHRASE'] = @api_pass
@@ -35,6 +43,7 @@ module Coinbase
         req['CB-ACCESS-SIGN'] = signature
 
         resp = @conn.request(req)
+
         case resp.code
         when "200" then yield(NetHTTPResponse.new(resp))
         when "400" then fail BadRequestError, resp.body
